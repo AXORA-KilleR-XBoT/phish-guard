@@ -1,0 +1,64 @@
+name: Python CI
+
+on:
+  push:
+    branches: [main]      # change this if your default branch has another name
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]   # scikit-learn 1.9 needs Python 3.11 or newer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+      - name: Run the real command line once (train on the sample file, then classify a message)
+        run: |
+          python phishguard.py train --data data/sample_sms.tsv --model "$RUNNER_TEMP/model.joblib"
+          python phishguard.py check "URGENT! Claim your free prize now" --model "$RUNNER_TEMP/model.joblib"
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image (downloads the data set and trains the model)
+        run: docker build -t phish-guard .
+      - name: Start the container and send one request
+        run: |
+          docker run -d --name phish-guard -p 127.0.0.1:8000:8000 phish-guard
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/openapi.json > /dev/null && break
+            sleep 1
+          done
+          curl -sf -X POST http://127.0.0.1:8000/check \
+            -H "Content-Type: application/json" \
+            -d '{"text":"URGENT! Claim your free prize now"}'
+          echo
+      - name: Show the container log
+        if: always()
+        run: docker logs phish-guard

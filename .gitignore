@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+.venv/
+# Generated files: the model and its checksum, and the downloaded data set
+*.joblib
+*.joblib.sha256
+data/sms.tsv

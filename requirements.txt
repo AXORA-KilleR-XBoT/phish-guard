@@ -1,0 +1,7 @@
+# Runtime dependencies (direct ones, pinned to versions that were tested together).
+# scikit-learn 1.9 needs Python 3.11 or newer.
+scikit-learn==1.9.1
+joblib==1.6.0
+fastapi==0.143.0
+pydantic==2.13.5
+uvicorn==0.53.0

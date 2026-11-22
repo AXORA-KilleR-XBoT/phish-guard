@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+__pycache__
+.pytest_cache
+*.joblib
+*.joblib.sha256
+data/sms.tsv
+test_*.py
+conftest.py
+testdata.py
+requirements-dev.txt
+README.md
+Dockerfile
+.dockerignore
